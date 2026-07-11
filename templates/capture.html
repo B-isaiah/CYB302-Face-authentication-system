@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Face Auth - Live Capture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; justify-content: center; padding: 2rem; min-height: 100vh; }
+  .container { max-width: 800px; width: 100%; }
+  h1 { text-align: center; margin-bottom: 1.5rem; font-size: 1.5rem; color: #38bdf8; }
+  .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  video { width: 100%; max-width: 640px; display: block; margin: 0 auto 1rem; border-radius: 8px; background: #000; }
+  canvas { display: none; }
+  .preview { max-width: 160px; max-height: 160px; border-radius: 8px; display: none; margin: 0 auto 1rem; }
+  .btn-row { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+  .btn { padding: 0.6rem 1.4rem; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: #38bdf8; color: #0f172a; }
+  .btn-primary:hover:not(:disabled) { background: #7dd3fc; }
+  .btn-success { background: #4ade80; color: #0f172a; }
+  .btn-success:hover:not(:disabled) { background: #86efac; }
+  .btn-danger { background: #f87171; color: #0f172a; }
+  .btn-danger:hover:not(:disabled) { background: #fca5a5; }
+  .btn-warning { background: #fbbf24; color: #0f172a; }
+  .btn-warning:hover:not(:disabled) { background: #fcd34d; }
+  .input-group { display: flex; gap: 0.75rem; align-items: center; justify-content: center; margin-bottom: 1rem; flex-wrap: wrap; }
+  .input-group label { font-weight: 500; }
+  .input-group input { padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; font-size: 0.9rem; }
+  .result { margin-top: 1rem; padding: 1rem; border-radius: 8px; background: #0f172a; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; word-break: break-all; display: none; }
+  .result.success { border-left: 4px solid #4ade80; }
+  .result.error { border-left: 4px solid #f87171; }
+  .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge-green { background: #166534; color: #86efac; }
+  .badge-red { background: #7f1d1d; color: #fca5a5; }
+  .badge-blue { background: #1e3a5f; color: #7dd3fc; }
+  p.status { text-align: center; margin-bottom: 0.75rem; font-size: 0.85rem; color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Face Recognition — Live Capture</h1>
+
+  <div class="card">
+    <p class="status" id="camStatus">Camera off</p>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    <img id="snapshot" class="preview" alt="Captured frame">
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnStart" onclick="startCam()">Start Camera</button>
+      <button class="btn btn-danger" id="btnStop" onclick="stopCam()" disabled>Stop Camera</button>
+      <button class="btn btn-warning" id="btnCapture" onclick="capture()" disabled>Capture Frame</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="input-group">
+      <label for="name">Name:</label>
+      <input type="text" id="name" placeholder="Enter staff name" value="Staff">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="enroll()" disabled id="btnEnroll">Enroll</button>
+      <button class="btn btn-primary" onclick="verify()" disabled id="btnVerify">Verify</button>
+      <button class="btn btn-warning" onclick="multimodalVerify()" disabled id="btnMulti">Multimodal Verify</button>
+    </div>
+    <div id="result" class="result"></div>
+  </div>
+</div>
+
+<script>
+let stream = null;
+let capturedBlob = null;
+
+async function startCam() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: "user" } });
+    document.getElementById('video').srcObject = stream;
+    document.getElementById('camStatus').textContent = 'Camera active';
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled = false;
+    document.getElementById('btnCapture').disabled = false;
+  } catch (e) {
+    showResult('Camera access denied or unavailable:\n' + e.message, false);
+  }
+}
+
+function stopCam() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  document.getElementById('video').srcObject = null;
+  document.getElementById('camStatus').textContent = 'Camera off';
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnCapture').disabled = true;
+  document.getElementById('btnEnroll').disabled = true;
+  document.getElementById('btnVerify').disabled = true;
+  document.getElementById('btnMulti').disabled = true;
+  document.getElementById('snapshot').style.display = 'none';
+  capturedBlob = null;
+}
+
+function capture() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(function(blob) {
+    capturedBlob = blob;
+    const img = document.getElementById('snapshot');
+    img.src = URL.createObjectURL(blob);
+    img.style.display = 'block';
+    document.getElementById('btnEnroll').disabled = false;
+    document.getElementById('btnVerify').disabled = false;
+    document.getElementById('btnMulti').disabled = false;
+  }, 'image/jpeg', 0.9);
+}
+
+function showResult(text, isSuccess) {
+  const el = document.getElementById('result');
+  el.textContent = text;
+  el.className = 'result' + (isSuccess ? ' success' : ' error');
+  el.style.display = 'block';
+}
+
+async function enroll() {
+  if (!capturedBlob) return;
+  const name = document.getElementById('name').value.trim() || 'Staff';
+  const form = new FormData();
+  form.append('name', name);
+  form.append('file', capturedBlob, 'capture.jpg');
+  try {
+    const res = await fetch('/enroll', { method: 'POST', body: form });
+    const data = await res.json();
+    showResult(JSON.stringify(data, null, 2), res.ok);
+  } catch (e) { showResult('Error: ' + e.message, false); }
+}
+
+async function verify() {
+  if (!capturedBlob) return;
+  const form = new FormData();
+  form.append('file', capturedBlob, 'capture.jpg');
+  try {
+    const res = await fetch('/verify', { method: 'POST', body: form });
+    const data = await res.json();
+    showResult(JSON.stringify(data, null, 2), res.ok);
+  } catch (e) { showResult('Error: ' + e.message, false); }
+}
+
+async function multimodalVerify() {
+  if (!capturedBlob) return;
+  const form = new FormData();
+  form.append('file', capturedBlob, 'capture.jpg');
+  try {
+    const res = await fetch('/multimodal/verify', { method: 'POST', body: form });
+    const data = await res.json();
+    showResult(JSON.stringify(data, null, 2), res.ok);
+  } catch (e) { showResult('Error: ' + e.message, false); }
+}
+</script>
+</body>
+</html>
