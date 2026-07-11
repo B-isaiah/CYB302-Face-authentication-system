@@ -731,22 +731,8 @@ Once the server is running, visit:
 ---
 
 
-## 13. Presentation Guide
 
-### Suggested 5-Minute Walkthrough
-
-| # | Slide | What to Say | What to Show |
-|---|-------|-------------|--------------|
-| 1 | **Problem** | "Passwords are shared and stolen. Impersonation is easy. The university needs a better way to secure research labs." | Slide with scenario text |
-| 2 | **Data Capture (Task 1)** | "Staff enroll by uploading their face photo. The image is saved and a biometric template is created." | Open Swagger → `POST /enroll` → enter name + upload a photo → execute |
-| 3 | **Preprocessing (Task 2)** | "Before recognition, the image goes through 5 stages: grayscale, resize, blur, histogram equalization, normalization. This improves accuracy under bad lighting." | `POST /preprocess` → upload photo → show the 6 base64 images returned |
-| 4 | **Feature Extraction (Task 3)** | "The face is converted to 128 numbers — a face embedding. This is the biometric template. Raw images are never stored long-term." | Show code snippet from `feature_extraction.py` showing `compute_face_descriptor()` |
-| 5 | **Matching (Task 4)** | "When someone scans their face, we compare their embedding against all stored ones using cosine similarity." | `POST /verify` → upload a different photo → show "Access Granted" or "Access Denied" |
-| 6 | **Threshold (Task 5)** | "The threshold controls the trade-off. Lower = convenient but insecure. Higher = secure but frustrating. We tune it to balance both." | `GET /metrics/threshold-sweep` → show the JSON response table |
-| 7 | **Performance (Task 6)** | "We measure FAR (false acceptance), FRR (false rejection), and EER (equal error rate). The ROC and DET curves visualize performance." | `GET /metrics` → then show `ROC.png` and `DET.png` from browser |
-| 8 | **Security (Task 8)** | "Templates are encrypted using Fernet AES before storage. Even if the database is breached, the data is useless without the key." | Show `encryption.py` — `encrypt_embedding()` and `decrypt_embedding()` |
-
-### Key Terms to Use During Presentation
+### Key Terms to Used
 
 | Term | Meaning |
 |------|---------|
