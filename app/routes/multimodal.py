@@ -16,7 +16,7 @@ from app.services.multimodal import (
 from app.services.feature_extraction import extract_embedding
 from app.services.matching import cosine_similarity
 from app.services.performance import compute_metrics, plot_roc_curve, plot_det_curve
-from app.config import REPORTS_DIR
+from app.config import REPORTS_DIR, SIMILARITY_THRESHOLD
 from app.datasets.orl import get_subjects
 
 router = APIRouter(prefix="/multimodal", tags=["Multimodal"])
@@ -39,7 +39,7 @@ def _load_gallery(db: Session):
 @router.post("/verify")
 def multimodal_verify(
     file: UploadFile = File(...),
-    threshold: float = Query(0.6, ge=0.0, le=1.0),
+    threshold: float = Query(SIMILARITY_THRESHOLD, ge=0.0, le=1.0),
     weight: float = Query(0.7, ge=0.0, le=1.0),
     db: Session = Depends(get_db),
 ):
@@ -81,7 +81,7 @@ def multimodal_verify(
 
 @router.post("/evaluate")
 def multimodal_evaluate(
-    threshold: float = Query(0.6, ge=0.0, le=1.0),
+    threshold: float = Query(SIMILARITY_THRESHOLD, ge=0.0, le=1.0),
     weight: float = Query(0.7, ge=0.0, le=1.0),
     enroll_count: int = Query(5, ge=1, le=9),
 ):
